@@ -3,6 +3,7 @@
 #include <util/delay.h>
 
 #include "serial.h"
+#include "analog.h"
 
 // Main
 int main(void)
