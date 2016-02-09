@@ -9,6 +9,7 @@
 #include <stdbool.h>
 
 #include "vardelay.h"
+#include "analog.h"
 
 //Defines
 
@@ -21,6 +22,7 @@ uint8_t setPump (bool onOff);
 uint8_t setSpeed (uint8_t selectedMotor, uint8_t delayStep);
 bool isContactTouched (void);
 uint8_t whichContactTouched(void);
-
+uint8_t setADC(uint16_t adcLevel);
+bool isPotsUnderLimit(void);
 
 #endif

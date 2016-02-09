@@ -1,15 +1,18 @@
 /* Pinout Arduino :
 
+  // OUTPUTS
+ * Pump : Port H (H0) (Pin 17)
+
  * Motor X1 : Port A
  * Motor X2 : Port L
  * Motor Y : Port B
  * Motor Z : Port C
  * Motor RotZ : Port F
 
- * Bit Port :   7   |   6   |   5    |     4     ||     3    |    2    |    1    |   0
- * Bit Driv :       |        |   Dir | ~Enab ||  MS3  | MS2 |  MS1 | Step
+ * Bit Port :   7   |   6   |   5    |  4   ||  3   |   2   |   1   |   0
+ * Bit Driv :        |        | Dir | ~Enab ||  MS3  | MS2 |  MS1 | Step
 
-
+  // INPUTS
  * Position Sensor X1 Min : Port D (PD0) (Pin 21)
  * Position Sensor X1 Max : Port D (PD1) (Pin 20)
  * Position Sensor X2 Min : Port D (PD2) (Pin 19)
@@ -18,7 +21,10 @@
  * Position Sensor Y Min : Port G (PG0) (Pin 41)
  * Position Sensor Y Max : Port G (PG1) (Pin 40)
 
- * Pump : Port H (H0) (Pin 17)
+ * Linear potentiometer 1 (Analog In) : Port K (PK0) (Analog pin 8)
+ * Linear potentiometer 2 (Analog In) : Port K (PK1) (Analog pin 9)
+ * Linear potentiometer 3 (Analog In) : Port K (PK2) (Analog pin 10)
+ * Linear potentiometer 4 (Analog In) : Port K (PK3) (Analog pin 11)
 
 */
 
@@ -28,7 +34,13 @@
 //Globals
 uint16_t oldDestX, oldDestY, oldDestZ, oldDestRotZ = 0;
 uint8_t MSX, MSY, MSZ, MSRotZ = 1;
-uint8_t delayStepX, delayStepY, delayStepZ, delayStepRotZ = 30;
+uint8_t delayStepX, delayStepY, delayStepZ, delayStepRotZ = 30; //MAX is 255 ms
+
+uint16_t maxDestX = 23505;
+uint16_t maxDestY = 18021;
+uint16_t maxDestZ = 6400;
+
+uint16_t potLimit = 0;
 
 // Functions
 
@@ -46,6 +58,8 @@ void init_port(void)
     DDRG &= 0x03;
 
     DDRH |= 0x01;
+
+    DDRK &= 0b00000111;
 
     // Init values (Drivers disabled by default at init, and reversed logic on Enable pin)
     PORTA |= 0b00010000;
@@ -71,19 +85,19 @@ bool isContactTouched (void)
 uint8_t whichContactTouched (void)
 {
     if (PD0 == 0)
-        return 3;
+        return 0x03;
     else if (PD1 == 0)
-        return 4;
-    else if (PD2 == 0)
-        return 5;
-    else if (PD3 == 0)
-        return 6;
+        return 0x04;
     else if (PG0 == 0)
-        return 7;
+        return 0x07;
     else if (PG1 == 0)
-        return 8;
+        return 0x08;
+    else if (PD2 == 0)
+        return 0x05;
+    else if (PD3 == 0)
+        return 0x06;
     else
-        return 0;
+        return 0x00;
 }
 
     //Execute the step order, compared to the reference position (initial position)
@@ -95,6 +109,10 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
     {
         // X
         case 0 :
+
+            //Checking if destination is reachable
+            if (destination > maxDestX)
+                return 0x02;
 
             //Set Dir
             if (destination >= oldDestX) // Go ascending X, DirX = 1 (TO VERIFY !!)
@@ -141,12 +159,16 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             PORTA |= 0x10;
             PORTL |= 0x10;
 
-            return 0;
+            return 0x00;
 
         break;
 
         // Y
         case 1 :
+
+            //Checking if destination is reachable
+            if (destination > maxDestY)
+                return 0x02;
 
             //Set Dir
             if (destination >= oldDestY) // Go ascending Y, DirY = 1 (TO VERIFY !!)
@@ -187,12 +209,16 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             //Disable motor
             PORTB |= 0x10;
 
-            return 0;
+            return 0x00;
 
         break;
 
         // Z
         case 2 :
+
+            //Checking if destination is reachable
+            if (destination > maxDestZ)
+                return 0x02;
 
             //Set Dir
             if (destination >= oldDestZ) // Go ascending Z, DirZ = 0 (OK)
@@ -218,7 +244,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             // Perform steps
             for (i = 0; i < stepToDo; i++)
             {
-                if (!isContactTouched())
+                if ((!isContactTouched()) && (isPotsUnderLimit()))
                 {
                     PORTC |= 0x01; //High
                     delay_ms(delayStepZ);
@@ -233,7 +259,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             //Disable motor
             PORTC |= 0x10;
 
-            return 0;
+            return 0x00;
 
         break;
 
@@ -264,7 +290,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             // Perform steps
             for (i = 0; i < stepToDo; i++)
             {
-                if (!isContactTouched())
+                if ((!isContactTouched()) && (isPotsUnderLimit()))
                 {
                     PORTF |= 0x01; //High
                     delay_ms(delayStepRotZ);
@@ -279,17 +305,17 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             //Disable motor
             PORTF |= 0x10;
 
-            return 0;
+            return 0x00;
 
         break;
 
         //Error : unknown selected motor
         default :
-            return 1;
+            return 0x01;
     }
 }
 
-    //Set the delay between two steps (in ms)
+    //Set the delay between two steps (in ms) (MAX = 255 ms)
 uint8_t setSpeed(uint8_t selectedMotor, uint8_t delayStep)
 {
     switch(selectedMotor)
@@ -320,10 +346,10 @@ uint8_t setSpeed(uint8_t selectedMotor, uint8_t delayStep)
 
         //Error : unknown selected motors
         default :
-            return 1;
+            return 0x01;
     }
 
-    return 0;
+    return 0x00;
 }
 
     //Set the micro-step factor of the selected motor (0 : Full Step, 1 : Half, ... , 4 : Sixteenth)
@@ -368,7 +394,7 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
                 break;
 
                 default :
-                    return 2; // Error : bad microStep factor
+                    return 0x02; // Error : bad microStep factor
             }
 
         break;
@@ -402,7 +428,7 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
                 break;
 
                 default :
-                    return 2; // Error : bad microStep factor
+                    return 0x02; // Error : bad microStep factor
             }
 
         break;
@@ -436,7 +462,7 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
                 break;
 
                 default :
-                    return 2; // Error : bad microStep factor
+                    return 0x02; // Error : bad microStep factor
             }
 
             break;
@@ -470,17 +496,17 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
                 break;
 
                 default :
-                    return 2; // Error : bad microStep factor
+                    return 0x02; // Error : bad microStep factor
             }
 
             break;
 
             //Error : unknown selected motor
             default :
-                return 1;
+                return 0x01;
     }
 
-    return 0;
+    return 0x00;
 }
 
     //Command the transistor commanding the pneumatic distributor
@@ -491,5 +517,28 @@ uint8_t setPump (bool onOff)
     else
         PORTH &= 0x01;
 
-    return 0;
+    return 0x00;
+}
+
+    //Set limit of accepted level on linear pots<=>applied force on needle forZ
+uint8_t setADC(uint16_t adcLevel)
+{
+    potLimit = adcLevel;
+    return 0x00;
+}
+
+    //Tell if the value read on linear pots is under the limit
+bool isPotsUnderLimit(void)
+{
+    uint16_t adcValue1, adcValue2, adcValue3;
+
+    //Reading ADC
+    ad_init(8);
+    adcValue1 = ad_sample();
+    ad_init(9);
+    adcValue2 = ad_sample();
+    ad_init(10);
+    adcValue3 = ad_sample();
+
+    return ((adcValue1 < potLimit) && (adcValue2 < potLimit) && (adcValue3 < potLimit));
 }
