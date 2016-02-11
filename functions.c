@@ -24,7 +24,6 @@
  * Linear potentiometer 1 (Analog In) : Port K (PK0) (Analog pin 8)
  * Linear potentiometer 2 (Analog In) : Port K (PK1) (Analog pin 9)
  * Linear potentiometer 3 (Analog In) : Port K (PK2) (Analog pin 10)
- * Linear potentiometer 4 (Analog In) : Port K (PK3) (Analog pin 11)
 
 */
 
@@ -33,7 +32,7 @@
 
 //Globals
 uint16_t oldDestX, oldDestY, oldDestZ, oldDestRotZ = 0;
-uint8_t MSX, MSY, MSZ, MSRotZ = 1;
+uint8_t MSX, MSY, MSZ, MSRotZ = 0;
 uint8_t delayStepX, delayStepY, delayStepZ, delayStepRotZ = 30; //MAX is 255 ms
 
 uint16_t maxDestX = 23505;
@@ -47,6 +46,7 @@ uint16_t potLimit = 0;
     // Init motor, sensor and pump ports
 void init_port(void)
 {
+
     // Init pinmode (as outputs (1) or inputs (0))
     DDRA |= 0b00111111;
     DDRL |= 0b00111111;
@@ -78,26 +78,26 @@ void init_port(void)
     //Tell if a contact sensor is touched
 bool isContactTouched (void)
 {
-    return ((PD0 == 0) || (PD1 == 0) || (PD2 == 0) || (PD3 == 0) || (PG0 == 0) || (PG1 == 0));
+    return ((PIND0 == 0) || (PIND1 == 0) || (PIND2 == 0) || (PIND3 == 0) || (PING0 == 0) || (PING1 == 0));
 }
 
     //Tell which contact sensor is touched and its associated error code
 uint8_t whichContactTouched (void)
 {
-    if (PD0 == 0)
-        return 0x03;
-    else if (PD1 == 0)
-        return 0x04;
-    else if (PG0 == 0)
-        return 0x07;
-    else if (PG1 == 0)
-        return 0x08;
-    else if (PD2 == 0)
-        return 0x05;
-    else if (PD3 == 0)
-        return 0x06;
+    if (PIND0 == 0)
+        return CMD_LOCK_MIN_X1;
+    else if (PIND1 == 0)
+        return CMD_LOCK_MAX_X1;
+    else if (PING0 == 0)
+        return CMD_LOCK_MIN_Y;
+    else if (PING1 == 0)
+        return CMD_LOCK_MAX_Y;
+    else if (PIND2 == 0)
+        return CMD_LOCK_MIN_X2;
+    else if (PIND3 == 0)
+        return CMD_LOCK_MAX_X2;
     else
-        return 0x00;
+        return CMD_OK;
 }
 
     //Execute the step order, compared to the reference position (initial position)
@@ -112,7 +112,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
 
             //Checking if destination is reachable
             if (destination > maxDestX)
-                return 0x02;
+                return CMD_DEST_UNREACHABLE;
 
             //Set Dir
             if (destination >= oldDestX) // Go ascending X, DirX = 1 (TO VERIFY !!)
@@ -159,7 +159,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             PORTA |= 0x10;
             PORTL |= 0x10;
 
-            return 0x00;
+            return CMD_OK;
 
         break;
 
@@ -168,7 +168,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
 
             //Checking if destination is reachable
             if (destination > maxDestY)
-                return 0x02;
+                return CMD_DEST_UNREACHABLE;
 
             //Set Dir
             if (destination >= oldDestY) // Go ascending Y, DirY = 1 (TO VERIFY !!)
@@ -209,7 +209,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             //Disable motor
             PORTB |= 0x10;
 
-            return 0x00;
+            return CMD_OK;
 
         break;
 
@@ -218,7 +218,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
 
             //Checking if destination is reachable
             if (destination > maxDestZ)
-                return 0x02;
+                return CMD_DEST_UNREACHABLE;
 
             //Set Dir
             if (destination >= oldDestZ) // Go ascending Z, DirZ = 0 (OK)
@@ -252,6 +252,9 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                     delay_ms(delayStepZ);
                 }
 
+                else if (!isPotsUnderLimit())
+                    return CMD_LOCK_Z;
+
                 else
                     return whichContactTouched();
             }
@@ -259,7 +262,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             //Disable motor
             PORTC |= 0x10;
 
-            return 0x00;
+            return CMD_OK;
 
         break;
 
@@ -298,20 +301,23 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                     delay_ms(delayStepRotZ);
                 }
 
+                else if (!isPotsUnderLimit())
+                    return CMD_LOCK_Z;
+
                 else
                     return whichContactTouched();
             }
 
-            //Disable motor
+            //Disable motor (TO VERIFY)
             PORTF |= 0x10;
 
-            return 0x00;
+            return CMD_OK;
 
         break;
 
         //Error : unknown selected motor
         default :
-            return 0x01;
+            return MOT_NOT_KNOWN;
     }
 }
 
@@ -346,10 +352,10 @@ uint8_t setSpeed(uint8_t selectedMotor, uint8_t delayStep)
 
         //Error : unknown selected motors
         default :
-            return 0x01;
+            return MOT_NOT_KNOWN;
     }
 
-    return 0x00;
+    return CMD_OK;
 }
 
     //Set the micro-step factor of the selected motor (0 : Full Step, 1 : Half, ... , 4 : Sixteenth)
@@ -394,7 +400,7 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
                 break;
 
                 default :
-                    return 0x02; // Error : bad microStep factor
+                    return CMD_DEST_UNREACHABLE; // Error : bad microStep factor
             }
 
         break;
@@ -428,7 +434,7 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
                 break;
 
                 default :
-                    return 0x02; // Error : bad microStep factor
+                    return CMD_DEST_UNREACHABLE; // Error : bad microStep factor
             }
 
         break;
@@ -462,7 +468,7 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
                 break;
 
                 default :
-                    return 0x02; // Error : bad microStep factor
+                    return CMD_DEST_UNREACHABLE; // Error : bad microStep factor
             }
 
             break;
@@ -496,17 +502,17 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
                 break;
 
                 default :
-                    return 0x02; // Error : bad microStep factor
+                    return CMD_DEST_UNREACHABLE; // Error : bad microStep factor
             }
 
             break;
 
             //Error : unknown selected motor
             default :
-                return 0x01;
+                return CMD_NOT_KNOWN;
     }
 
-    return 0x00;
+    return CMD_OK;
 }
 
     //Command the transistor commanding the pneumatic distributor
@@ -517,14 +523,14 @@ uint8_t setPump (bool onOff)
     else
         PORTH &= 0x01;
 
-    return 0x00;
+    return CMD_OK;
 }
 
     //Set limit of accepted level on linear pots<=>applied force on needle forZ
 uint8_t setADC(uint16_t adcLevel)
 {
     potLimit = adcLevel;
-    return 0x00;
+    return CMD_OK;
 }
 
     //Tell if the value read on linear pots is under the limit
@@ -541,4 +547,78 @@ bool isPotsUnderLimit(void)
     adcValue3 = ad_sample();
 
     return ((adcValue1 < potLimit) && (adcValue2 < potLimit) && (adcValue3 < potLimit));
+}
+
+    //Give the current position of the selected motor
+uint16_t getDest(uint8_t selectedMotor)
+{
+    switch(selectedMotor)
+    {
+
+    //X position wanted
+    case 0 :
+    {
+        return oldDestX;
+    }
+        break;
+
+        //Y position wanted
+    case 1 :
+    {
+        return oldDestY;
+    }
+        break;
+
+        //Z position wanted
+    case 2 :
+    {
+        return oldDestZ;
+    }
+        break;
+
+        //RotZ position wanted
+    case 3 :
+    {
+        return oldDestRotZ;
+    }
+        break;
+
+    default :
+        return MOT_NOT_KNOWN;
+    }
+}
+
+    //Give the converted value on the selected analogic pin
+uint16_t getADCvalue(uint8_t selectedPin)
+{
+    switch(selectedPin)
+    {
+
+    // PK0 wanted
+    case 0 :
+    {
+        ad_init(8);
+        return ad_sample();
+    }
+        break;
+
+        // PK1 wanted
+    case 1 :
+    {
+        ad_init(9);
+        return ad_sample();
+    }
+        break;
+
+        // PK2 wanted
+    case 2 :
+    {
+        ad_init(10);
+        return ad_sample();
+    }
+        break;
+
+    default :
+        return 0;
+    }
 }

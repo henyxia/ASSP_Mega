@@ -10,7 +10,7 @@ TARGET = usb
 TERM = /dev/ttyACM0
 CPPFLAGS = -mmcu=$(MCU)
 PGMER = -c stk500v1 -b 57600 -P $(TERM)
-PGMERISP = -c stk500v1 -b 115200 -P $(TERM)
+PGMERISP = -c stk500v2 -b 115200 -P $(TERM) -D
 ARVDUDECONF= -C /usr/local/arduino/arduino-0022/hardware/tools/avrdude.conf
 DUDE = /usr/bin/avrdude -F -v -p $(MCU) $(AVRDUDECONF)
 

@@ -39,11 +39,11 @@ int main(void)
             //Deducting selectedMotor frame
             serFrame1 = serFrame1 >> 2;
 
-            send_serial(0x00); // OK, roger that, waiting for dest
+            send_serial(WAIT_FOR_NEXT_FRAME); // OK, roger that, waiting for dest
 
             //Waiting for destination frames
             serFrame2 = get_serial();
-            send_serial(0x00); // LINE TO VERIFY
+            send_serial(WAIT_FOR_NEXT_FRAME);
             serFrame3 = get_serial();
 
             //Deducting destination
@@ -62,7 +62,7 @@ int main(void)
             //Deducting selectedMotor frame
             serFrame1 = serFrame1 >> 2;
 
-            send_serial(0x00); // OK, roger that, waiting for MS
+            send_serial(WAIT_FOR_NEXT_FRAME); // OK, roger that, waiting for MS
 
             //Waiting for MS frame
             serFrame2 = get_serial();
@@ -79,8 +79,6 @@ int main(void)
         //setPump called
         case 0x02 :
         {
-            //send_serial(0x00); // TO VERIFY : OK, command known
-
             //Perform setPump
             returnCode = setPump(serFrame1);
             send_serial(returnCode);
@@ -90,7 +88,7 @@ int main(void)
         //setADC called
         case 0x03 :
         {
-            send_serial(0x00); // OK, roger that, waiting for next frame
+            send_serial(WAIT_FOR_NEXT_FRAME); // OK, roger that, waiting for next frame
 
             //Waiting for second adcLevel frame
             serFrame2 = get_serial();
@@ -114,12 +112,12 @@ int main(void)
             break;
 
         //setSpeed called
-        case 0x0D :
+        case 0x05 :
         {
             //Deducting selectedMotor frame
             serFrame1 = serFrame1 >> 2;
 
-            send_serial(0x00); // OK, roger that, waiting for delayStep
+            send_serial(WAIT_FOR_NEXT_FRAME); // OK, roger that, waiting for delayStep
 
             //Waiting for delayStep frame
             serFrame2 = get_serial();
@@ -128,10 +126,18 @@ int main(void)
             returnCode = setSpeed(serFrame1, serFrame2);
             send_serial(returnCode);
         }
+            break;
+
+        //getDest called
+        case 0x08 :
+        {
+            // TO DO
+        }
+            break;
 
         //Called command not known
         default :
-            send_serial(0x01);
+            send_serial(CMD_NOT_KNOWN);
         }
 
     }
