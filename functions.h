@@ -10,6 +10,7 @@
 
 #include "vardelay.h"
 #include "analog.h"
+#include "serial.h"
 
 //Defines
 #define CMD_OK 0x00

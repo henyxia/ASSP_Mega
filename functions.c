@@ -1,7 +1,7 @@
 /* Pinout Arduino :
 
   // OUTPUTS
- * Pump : Port H (H0) (Pin 17)
+ * Pump : Port G (PG2) (Pin 39)
 
  * Motor X1 : Port A
  * Motor X2 : Port L
@@ -13,10 +13,10 @@
  * Bit Driv :        |        | Dir | ~Enab ||  MS3  | MS2 |  MS1 | Step
 
   // INPUTS
- * Position Sensor X1 Min : Port D (PD0) (Pin 21)
- * Position Sensor X1 Max : Port D (PD1) (Pin 20)
- * Position Sensor X2 Min : Port D (PD2) (Pin 19)
- * Position Sensor X2 Max : Port D (PD3) (Pin 18)
+ * Position Sensor X1 Min : Port H (PH3) (Pin 6)
+ * Position Sensor X1 Max : Port H (PH4) (Pin 7)
+ * Position Sensor X2 Min : Port H (PH5) (Pin 8)
+ * Position Sensor X2 Max : Port H (PH6) (Pin 9)
 
  * Position Sensor Y Min : Port G (PG0) (Pin 41)
  * Position Sensor Y Max : Port G (PG1) (Pin 40)
@@ -30,16 +30,23 @@
 // Includes
 #include "functions.h"
 
+#define DEFAULT_DELAY 10
+
 //Globals
-uint16_t oldDestX, oldDestY, oldDestZ, oldDestRotZ = 0;
-uint8_t MSX, MSY, MSZ, MSRotZ = 0;
-uint8_t delayStepX, delayStepY, delayStepZ, delayStepRotZ = 30; //MAX is 255 ms
+uint16_t oldDestX = 0, oldDestY = 0, oldDestZ = 0, oldDestRotZ = 0;
+uint8_t MSX = 0, MSY = 0, MSZ = 0, MSRotZ = 0;
+uint8_t delayStepX = DEFAULT_DELAY; //MAX is 255 ms
+uint8_t delayStepY = DEFAULT_DELAY;
+uint8_t delayStepZ = DEFAULT_DELAY;
+uint8_t delayStepRotZ = DEFAULT_DELAY;
 
 uint16_t maxDestX = 23505;
 uint16_t maxDestY = 18021;
 uint16_t maxDestZ = 6400;
 
 uint16_t potLimit = 0;
+
+uint16_t i =0, stepToDo = 0;
 
 // Functions
 
@@ -48,53 +55,65 @@ void init_port(void)
 {
 
     // Init pinmode (as outputs (1) or inputs (0))
+      //Motors ports as outputs
     DDRA |= 0b00111111;
     DDRL |= 0b00111111;
     DDRB |= 0b00111111;
     DDRC |= 0b00111111;
     DDRF |= 0b00111111;
 
-    DDRD &= 0x0A;
-    DDRG &= 0x03;
+      // Pump (PG2) as output, sensors Y (PG0 and PG1) as inputs
+    DDRG &= ~0b00000011;
+    DDRG |= 0b00000100;
 
-    DDRH |= 0x01;
+      //Sensors X1 and X2 as inputs
+    DDRH &= ~0b01111000;
 
-    DDRK &= 0b00000111;
+      //Pots as inputs
+    DDRK &= ~0b00000111;
 
     // Init values (Drivers disabled by default at init, and reversed logic on Enable pin)
+      //Pin enable HIGH
     PORTA |= 0b00010000;
     PORTL |= 0b00010000;
     PORTB |= 0b00010000;
     PORTC |= 0b00010000;
     PORTF |= 0b00010000;
+      //Pin MS3,2,1 LOW (Full step by default)
+    PORTA &= ~0b00001110;
+    PORTL &= ~0b00001110;
+    PORTB &= ~0b00001110;
+    PORTC &= ~0b00001110;
+    PORTF &= ~0b00001110;
 
-    PORTH &= 0x01;
+    PORTG &= ~0b00000100; //Pump disabled at init
 
     //Activate Pull up internal res on Arduino for contact sensors
-    PORTD |= 0b00001111;
+    PORTH |= 0b01111000;
     PORTG |= 0b00000011;
 }
 
-    //Tell if a contact sensor is touched
+    //Tell if a contact sensor is touched   (//TO TEST WHEN PINOUT WILL BE MADE)
 bool isContactTouched (void)
 {
-    return ((PIND0 == 0) || (PIND1 == 0) || (PIND2 == 0) || (PIND3 == 0) || (PING0 == 0) || (PING1 == 0));
+    //return ((PINH3 == 0) || (PINH4 == 0) || (PINH5 == 0) || (PINH6 == 0) || (PING0 == 0) || (PING1 == 0));
+    return false;
 }
 
     //Tell which contact sensor is touched and its associated error code
 uint8_t whichContactTouched (void)
 {
-    if (PIND0 == 0)
+    if (PINH3 == 0)
         return CMD_LOCK_MIN_X1;
-    else if (PIND1 == 0)
+    else if (PINH4 == 0)
         return CMD_LOCK_MAX_X1;
     else if (PING0 == 0)
         return CMD_LOCK_MIN_Y;
     else if (PING1 == 0)
         return CMD_LOCK_MAX_Y;
-    else if (PIND2 == 0)
+    else if (PINH5 == 0)
         return CMD_LOCK_MIN_X2;
-    else if (PIND3 == 0)
+    else if (PINH6 == 0)
         return CMD_LOCK_MAX_X2;
     else
         return CMD_OK;
@@ -103,13 +122,11 @@ uint8_t whichContactTouched (void)
     //Execute the step order, compared to the reference position (initial position)
 uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
 {
-    uint16_t i, stepToDo = 0;
-
     switch(selectedMotor)
     {
         // X
-        case 0 :
-
+    case 0 :
+    {
             //Checking if destination is reachable
             if (destination > maxDestX)
                 return CMD_DEST_UNREACHABLE;
@@ -125,8 +142,8 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
 
             else
             {
-                PORTA &= 0x20;
-                PORTL &= 0x20;
+                PORTA &= ~0x20;
+                PORTL &= ~0x20;
 
                 stepToDo = oldDestX - destination;
             }
@@ -135,8 +152,8 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             oldDestX = destination;
 
             //Enable motors
-            PORTA &= 0x10; //Reversed logic on Enable pin
-            PORTL &= 0x10;
+            PORTA &= ~0x10; //Reversed logic on Enable pin
+            PORTL &= ~0x10;
 
             // Perform steps
             for (i = 0; i < stepToDo; i++)
@@ -146,8 +163,8 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                     PORTA |= 0x01; //High
                     PORTL |= 0x01;
                     delay_ms(delayStepX);
-                    PORTA &= 0x01; //Low
-                    PORTL &= 0x01;
+                    PORTA &= ~0x01; //Low
+                    PORTL &= ~0x01;
                     delay_ms(delayStepX);
                 }
 
@@ -160,12 +177,12 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             PORTL |= 0x10;
 
             return CMD_OK;
-
+    }
         break;
 
         // Y
         case 1 :
-
+    {
             //Checking if destination is reachable
             if (destination > maxDestY)
                 return CMD_DEST_UNREACHABLE;
@@ -180,7 +197,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
 
             else
             {
-                PORTB &= 0x20;
+                PORTB &= ~0x20;
 
                 stepToDo = oldDestY - destination;
             }
@@ -189,7 +206,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             oldDestY = destination;
 
             //Enable motor
-            PORTB &= 0x10; //Reversed logic on Enable pin
+            PORTB &= ~0x10; //Reversed logic on Enable pin
 
             // Perform steps
             for (i = 0; i < stepToDo; i++)
@@ -198,7 +215,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                 {
                     PORTB |= 0x01; //High
                     delay_ms(delayStepY);
-                    PORTB &= 0x01; //Low
+                    PORTB &= ~0x01; //Low
                     delay_ms(delayStepY);
                 }
 
@@ -210,12 +227,12 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             PORTB |= 0x10;
 
             return CMD_OK;
-
+    }
         break;
 
         // Z
         case 2 :
-
+    {
             //Checking if destination is reachable
             if (destination > maxDestZ)
                 return CMD_DEST_UNREACHABLE;
@@ -230,7 +247,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
 
             else
             {
-                PORTC &= 0x20;
+                PORTC &= ~0x20;
 
                 stepToDo = oldDestZ - destination;
             }
@@ -239,7 +256,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             oldDestZ = destination;
 
             //Enable motor
-            PORTC &= 0x10; //Reversed logic on Enable pin
+            PORTC &= ~0x10; //Reversed logic on Enable pin
 
             // Perform steps
             for (i = 0; i < stepToDo; i++)
@@ -248,7 +265,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                 {
                     PORTC |= 0x01; //High
                     delay_ms(delayStepZ);
-                    PORTC &= 0x01; //Low
+                    PORTC &= ~0x01; //Low
                     delay_ms(delayStepZ);
                 }
 
@@ -263,12 +280,12 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             PORTC |= 0x10;
 
             return CMD_OK;
-
+    }
         break;
 
         //Rot Z
         case 3 :
-
+    {
             //Set Dir
             if (destination >= oldDestRotZ) // Go direct sense RotZ, DirRotZ = 0 (else 1 for Trigo)
             {
@@ -279,7 +296,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
 
             else
             {
-                PORTF &= 0x20;
+                PORTF &= ~0x20;
 
                 stepToDo = oldDestRotZ - destination;
             }
@@ -288,7 +305,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             oldDestRotZ = destination;
 
             //Enable motor
-            PORTF &= 0x10; //Reversed logic on Enable pin
+            PORTF &= ~0x10; //Reversed logic on Enable pin
 
             // Perform steps
             for (i = 0; i < stepToDo; i++)
@@ -297,7 +314,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                 {
                     PORTF |= 0x01; //High
                     delay_ms(delayStepRotZ);
-                    PORTF &= 0x01; //Low
+                    PORTF &= ~0x01; //Low
                     delay_ms(delayStepRotZ);
                 }
 
@@ -312,7 +329,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             PORTF |= 0x10;
 
             return CMD_OK;
-
+    }
         break;
 
         //Error : unknown selected motor
@@ -369,29 +386,29 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
             switch(microStep)
             {
                 case 0 :
-                    PORTA &= 0b00001110;
-                    PORTL &= 0b00001110;
+                    PORTA &= ~0b00001110;
+                    PORTL &= ~0b00001110;
                 break;
 
                 case 1 :
                     PORTA |= 0b00000010;
                     PORTL |= 0b00000010;
-                    PORTA &= 0b00001100;
-                    PORTL &= 0b00001100;
+                    PORTA &= ~0b00001100;
+                    PORTL &= ~0b00001100;
                 break;
 
                 case 2 :
                     PORTA |= 0b00000100;
                     PORTL |= 0b00000100;
-                    PORTA &= 0b00001010;
-                    PORTL &= 0b00001010;
+                    PORTA &= ~0b00001010;
+                    PORTL &= ~0b00001010;
                 break;
 
                 case 3 :
                     PORTA |= 0b00001100;
                     PORTL |= 0b00001100;
-                    PORTA &= 0b00000010;
-                    PORTL &= 0b00000010;
+                    PORTA &= ~0b00000010;
+                    PORTL &= ~0b00000010;
                 break;
 
                 case 4 :
@@ -411,22 +428,22 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
             switch(microStep)
             {
                 case 0 :
-                    PORTB &= 0b00001110;
+                    PORTB &= ~0b00001110;
                 break;
 
                 case 1 :
                     PORTB |= 0b00000010;
-                    PORTB &= 0b00001100;
+                    PORTB &= ~0b00001100;
                 break;
 
                 case 2 :
                     PORTB |= 0b00000100;
-                    PORTB &= 0b00001010;
+                    PORTB &= ~0b00001010;
                 break;
 
                 case 3 :
                     PORTB |= 0b00001100;
-                    PORTB &= 0b00000010;
+                    PORTB &= ~0b00000010;
                 break;
 
                 case 4 :
@@ -445,22 +462,22 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
             switch(microStep)
             {
                 case 0 :
-                    PORTC &= 0b00001110;
+                    PORTC &= ~0b00001110;
                 break;
 
                 case 1 :
                     PORTC |= 0b00000010;
-                    PORTC &= 0b00001100;
+                    PORTC &= ~0b00001100;
                 break;
 
                 case 2 :
                     PORTC |= 0b00000100;
-                    PORTC &= 0b00001010;
+                    PORTC &= ~0b00001010;
                 break;
 
                 case 3 :
                     PORTC |= 0b00001100;
-                    PORTC &= 0b00000010;
+                    PORTC &= ~0b00000010;
                 break;
 
                 case 4 :
@@ -484,17 +501,17 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
 
                 case 1 :
                     PORTF |= 0b00000010;
-                    PORTF &= 0b00001100;
+                    PORTF &= ~0b00001100;
                 break;
 
                 case 2 :
                     PORTF |= 0b00000100;
-                    PORTF &= 0b00001010;
+                    PORTF &= ~0b00001010;
                 break;
 
                 case 3 :
                     PORTF |= 0b00001100;
-                    PORTF &= 0b00000010;
+                    PORTF &= ~0b00000010;
                 break;
 
                 case 4 :
@@ -519,9 +536,9 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
 uint8_t setPump (bool onOff)
 {
     if (onOff)
-        PORTH |= 0x01;
+        PORTG |= 0x04;
     else
-        PORTH &= 0x01;
+        PORTG &= ~0x04;
 
     return CMD_OK;
 }

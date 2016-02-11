@@ -27,7 +27,7 @@ int main(void)
     {
         //Getting first frame
         serFrame = get_serial();
-        serFunctionCalled = serFrame & 0xF0; //Getting b3:b0
+        serFunctionCalled = serFrame & 0x0F; //Getting b3:b0
         serFrame1 = serFrame >> 4; //Getting b7:b4
 
         switch(serFunctionCalled)
@@ -36,10 +36,8 @@ int main(void)
         //setDest called
         case 0x00 :
         {
-            //Deducting selectedMotor frame
-            serFrame1 = serFrame1 >> 2;
-
-            send_serial(WAIT_FOR_NEXT_FRAME); // OK, roger that, waiting for dest
+             // OK, roger that, waiting for dest
+            send_serial(WAIT_FOR_NEXT_FRAME);
 
             //Waiting for destination frames
             serFrame2 = get_serial();
@@ -47,6 +45,7 @@ int main(void)
             serFrame3 = get_serial();
 
             //Deducting destination
+            destination = 0;
             destination = serFrame2 << 8;
             destination |= serFrame3;
 
@@ -59,16 +58,11 @@ int main(void)
         //setMS called
         case 0x01 :
         {
-            //Deducting selectedMotor frame
-            serFrame1 = serFrame1 >> 2;
-
-            send_serial(WAIT_FOR_NEXT_FRAME); // OK, roger that, waiting for MS
+            // OK, roger that, waiting for MS
+            send_serial(WAIT_FOR_NEXT_FRAME);
 
             //Waiting for MS frame
             serFrame2 = get_serial();
-
-            //Deducting correct MS parameter
-            serFrame2 = serFrame2 >> 5;
 
             //Perform setMS
             returnCode = setMS(serFrame1, serFrame2);
@@ -88,13 +82,14 @@ int main(void)
         //setADC called
         case 0x03 :
         {
-            send_serial(WAIT_FOR_NEXT_FRAME); // OK, roger that, waiting for next frame
+            // OK, roger that, waiting for next frame
+            send_serial(WAIT_FOR_NEXT_FRAME);
 
             //Waiting for second adcLevel frame
             serFrame2 = get_serial();
 
             //Deducting correct adcLevel wanted
-            serFrame1 = serFrame1 >> 2;
+            destination = 0;
             destination = serFrame1 << 8;
             destination |= serFrame2;
 
@@ -114,10 +109,8 @@ int main(void)
         //setSpeed called
         case 0x05 :
         {
-            //Deducting selectedMotor frame
-            serFrame1 = serFrame1 >> 2;
-
-            send_serial(WAIT_FOR_NEXT_FRAME); // OK, roger that, waiting for delayStep
+            // OK, roger that, waiting for delayStep
+            send_serial(WAIT_FOR_NEXT_FRAME);
 
             //Waiting for delayStep frame
             serFrame2 = get_serial();
