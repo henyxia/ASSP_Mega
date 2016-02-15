@@ -124,15 +124,96 @@ int main(void)
         //getDest called
         case 0x08 :
         {
-            // TO DO
+            destination = getDest(serFrame1);
+
+            //OK, roger that, let's send first frame if correct mot
+            if (destination != MOT_NOT_KNOWN_GET)
+            {
+                //First frame : OK
+                send_serial(CMD_OK);
+                //Frame 2 : dest[15:8]
+                send_serial(destination >> 8);
+                //Frame 3 : dest[7:0]
+                send_serial(destination & 0x00FF);
+            }
+
+            //Bad mot
+            else
+            {
+                send_serial(MOT_NOT_KNOWN);
+            }
         }
             break;
 
-        //Called command not known
+    //getMS called
+        case 0x09 :
+        {
+            destination = getMS();
+
+            send_serial((destination & 0x0F00) >> 4);
+            send_serial(destination & 0x00FF);
+        }
+            break;
+
+        //getPump called
+        case 0x0A :
+        {
+            send_serial(getPump() << 4);
+        }
+            break;
+
+        //getADC called
+        case 0x0B :
+        {
+            destination = getADC();
+
+            send_serial((destination & 0x0300) >> 4 );
+            send_serial(destination & 0x00FF);
+        }
+            break;
+
+        //getRelease called
+        case 0x0C :
+        {
+            //TO DO
+        }
+            break;
+
+        //getADCValue called
+        case 0x0D :
+        {
+            destination = getADCvalue(serFrame1);
+
+            send_serial((destination & 0x0300) >> 4 );
+            send_serial(destination & 0x00FF);
+        }
+            break;
+
+        //getSpeed called
+        case 0x0E :
+        {
+            returnCode = getSpeed(serFrame1);
+
+            //OK, roger that, let's send first frame if correct mot
+            if (returnCode != 0)
+            {
+                //First frame : OK
+                send_serial(CMD_OK);
+                //Frame 2 : delayStep wanted
+                send_serial(returnCode);
+            }
+
+            else
+            {
+                send_serial(MOT_NOT_KNOWN);
+            }
+        }
+            break;
+
+            //Called command not known
         default :
             send_serial(CMD_NOT_KNOWN);
         }
-
     }
 
 	return 0;

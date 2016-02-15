@@ -25,6 +25,7 @@
 #define CMD_LOCK_Z 0x09
 
 #define MOT_NOT_KNOWN 0x01
+#define MOT_NOT_KNOWN_GET 0xFFFF
 
 #define WAIT_FOR_NEXT_FRAME 0x0A
 
@@ -44,10 +45,11 @@ uint8_t setADC(uint16_t adcLevel);
 bool isPotsUnderLimit(void);
 
 uint16_t getDest (uint8_t selectedMotor);
-uint8_t getMS (void);
+uint16_t getMS (void);
 uint8_t getPump(void);
 uint16_t getADC(void);
 uint8_t getRelease(void);
 uint16_t getADCvalue(uint8_t selectedPin);
+uint8_t getSpeed (uint8_t selectedMotor);
 
 #endif

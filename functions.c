@@ -39,6 +39,7 @@ uint8_t delayStepX = DEFAULT_DELAY; //MAX is 255 ms
 uint8_t delayStepY = DEFAULT_DELAY;
 uint8_t delayStepZ = DEFAULT_DELAY;
 uint8_t delayStepRotZ = DEFAULT_DELAY;
+bool onOffPump = 0;
 
 uint16_t maxDestX = 23505;
 uint16_t maxDestY = 18021;
@@ -341,38 +342,45 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
     //Set the delay between two steps (in ms) (MAX = 255 ms)
 uint8_t setSpeed(uint8_t selectedMotor, uint8_t delayStep)
 {
-    switch(selectedMotor)
+    if (delayStep != 0)
     {
-        // X
+        switch(selectedMotor)
+        {
+            // X
         case 0 :
             delayStepX = delayStep;
 
-        break;
+            break;
 
-        // Y
+            // Y
         case 1 :
             delayStepY = delayStep;
 
-        break;
+            break;
 
-        // Z
+            // Z
         case 2 :
             delayStepZ = delayStep;
 
-        break;
+            break;
 
-        //Rot Z
+            //Rot Z
         case 3 :
             delayStepRotZ = delayStep;
 
-        break;
+            break;
 
-        //Error : unknown selected motors
+            //Error : unknown selected motors
         default :
             return MOT_NOT_KNOWN;
-    }
+        }
 
     return CMD_OK;
+    }
+
+    //Delay cannot be 0 ms !!
+    else
+        return CMD_DEST_UNREACHABLE;
 }
 
     //Set the micro-step factor of the selected motor (0 : Full Step, 1 : Half, ... , 4 : Sixteenth)
@@ -386,34 +394,49 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
             switch(microStep)
             {
                 case 0 :
+            {
                     PORTA &= ~0b00001110;
                     PORTL &= ~0b00001110;
+                    MSX = 0;
+            }
                 break;
 
                 case 1 :
+            {
                     PORTA |= 0b00000010;
                     PORTL |= 0b00000010;
                     PORTA &= ~0b00001100;
                     PORTL &= ~0b00001100;
+                    MSX = 1;
+            }
                 break;
 
                 case 2 :
+            {
                     PORTA |= 0b00000100;
                     PORTL |= 0b00000100;
                     PORTA &= ~0b00001010;
                     PORTL &= ~0b00001010;
+                    MSX = 2;
+            }
                 break;
 
                 case 3 :
+            {
                     PORTA |= 0b00001100;
                     PORTL |= 0b00001100;
                     PORTA &= ~0b00000010;
                     PORTL &= ~0b00000010;
+                    MSX = 3;
+            }
                 break;
 
                 case 4 :
+            {
                     PORTA |= 0b00001110;
                     PORTL |= 0b00001110;
+                    MSX = 4;
+            }
                 break;
 
                 default :
@@ -428,26 +451,41 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
             switch(microStep)
             {
                 case 0 :
+            {
                     PORTB &= ~0b00001110;
+                    MSY = 0;
+            }
                 break;
 
                 case 1 :
+            {
                     PORTB |= 0b00000010;
                     PORTB &= ~0b00001100;
+                    MSY = 1;
+            }
                 break;
 
                 case 2 :
+            {
                     PORTB |= 0b00000100;
                     PORTB &= ~0b00001010;
+                    MSY = 2;
+            }
                 break;
 
                 case 3 :
+            {
                     PORTB |= 0b00001100;
                     PORTB &= ~0b00000010;
+                    MSY = 3;
+            }
                 break;
 
                 case 4 :
+            {
                     PORTB |= 0b00001110;
+                    MSY = 4;
+            }
                 break;
 
                 default :
@@ -462,26 +500,41 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
             switch(microStep)
             {
                 case 0 :
+            {
                     PORTC &= ~0b00001110;
+                    MSZ = 0;
+            }
                 break;
 
                 case 1 :
+            {
                     PORTC |= 0b00000010;
                     PORTC &= ~0b00001100;
+                    MSZ = 1;
+            }
                 break;
 
                 case 2 :
+            {
                     PORTC |= 0b00000100;
                     PORTC &= ~0b00001010;
+                    MSZ = 2;
+            }
                 break;
 
                 case 3 :
+            {
                     PORTC |= 0b00001100;
                     PORTC &= ~0b00000010;
+                    MSZ = 3;
+            }
                 break;
 
                 case 4 :
+            {
                     PORTC |= 0b00001110;
+                    MSZ = 4;
+            }
                 break;
 
                 default :
@@ -496,26 +549,41 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
             switch(microStep)
             {
                 case 0 :
+            {
                     PORTF &= 0b00001110;
+                    MSRotZ = 0;
+            }
                 break;
 
                 case 1 :
+            {
                     PORTF |= 0b00000010;
                     PORTF &= ~0b00001100;
+                    MSRotZ = 1;
+            }
                 break;
 
                 case 2 :
+            {
                     PORTF |= 0b00000100;
                     PORTF &= ~0b00001010;
+                    MSRotZ = 2;
+            }
                 break;
 
                 case 3 :
+            {
                     PORTF |= 0b00001100;
                     PORTF &= ~0b00000010;
+                    MSRotZ = 3;
+            }
                 break;
 
                 case 4 :
+            {
                     PORTF |= 0b00001110;
+                    MSRotZ = 4;
+            }
                 break;
 
                 default :
@@ -535,6 +603,8 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep)
     //Command the transistor commanding the pneumatic distributor
 uint8_t setPump (bool onOff)
 {
+    onOffPump = onOff;
+
     if (onOff)
         PORTG |= 0x04;
     else
@@ -601,7 +671,7 @@ uint16_t getDest(uint8_t selectedMotor)
         break;
 
     default :
-        return MOT_NOT_KNOWN;
+        return MOT_NOT_KNOWN_GET;
     }
 }
 
@@ -635,6 +705,64 @@ uint16_t getADCvalue(uint8_t selectedPin)
     }
         break;
 
+    default :
+        return 0;
+    }
+}
+
+    //Give the current values of MS settings of all motor and build the frames
+uint16_t getMS(void)
+{
+    return ((MSY & 0x01) << 11 | MSX << 8 | MSRotZ << 5 | MSZ << 2 | MSY >> 1);
+}
+
+    //Give pump state (on = 1, off = 0)
+uint8_t getPump(void)
+{
+    return onOffPump;
+}
+
+    //Give the set limit for pots on Z axis
+uint16_t getADC(void)
+{
+    return potLimit;
+}
+
+    //Give the set speed of the selected motor
+uint8_t getSpeed (uint8_t selectedMotor)
+{
+    switch(selectedMotor)
+    {
+
+    //X position wanted
+    case 0 :
+    {
+        return delayStepX;
+    }
+        break;
+
+        //Y position wanted
+    case 1 :
+    {
+        return delayStepY;
+    }
+        break;
+
+        //Z position wanted
+    case 2 :
+    {
+        return delayStepZ;
+    }
+        break;
+
+        //RotZ position wanted
+    case 3 :
+    {
+        return delayStepRotZ;
+    }
+        break;
+
+        //Error : motor not known
     default :
         return 0;
     }
