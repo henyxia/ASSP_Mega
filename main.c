@@ -7,7 +7,11 @@
 #include "functions.h"
 #include "vardelay.h"
 
-//Globals
+// Defines
+#define MAJOR_VERSION	0
+#define	MINOR_VERSION	1
+
+// Globals
 uint8_t serFrame;
 uint8_t serFunctionCalled = 0;
 uint8_t serFrame1, serFrame2, serFrame3 = 0;
@@ -209,6 +213,12 @@ int main(void)
             }
         }
             break;
+
+		case 0x0F:
+			// Asking for the version code
+			send_serial((MINOR_VERSION << 4) | CMD_OK);
+			send_serial(MAJOR_VERSION);
+			break;
 
             //Called command not known
         default :
