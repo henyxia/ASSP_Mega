@@ -39,7 +39,12 @@ uint8_t delayStepX = DEFAULT_DELAY; //MAX is 255 ms
 uint8_t delayStepY = DEFAULT_DELAY;
 uint8_t delayStepZ = DEFAULT_DELAY;
 uint8_t delayStepRotZ = DEFAULT_DELAY;
+
 bool onOffPump = 0;
+bool onOffMotX = 0; //Motors not locked by default
+bool onOffMotY = 0;
+bool onOffMotZ = 0;
+bool onOffMotRotZ = 0;
 
 uint16_t maxDestX = 23505;
 uint16_t maxDestY = 18021;
@@ -92,29 +97,31 @@ void init_port(void)
     //Activate Pull up internal res on Arduino for contact sensors
     PORTH |= 0b01111000;
     PORTG |= 0b00000011;
+
+    //Activate Pull up internal res on Arduino for linear pots
+    PORTK |= 0b00000111;
 }
 
-    //Tell if a contact sensor is touched   (//TO TEST WHEN PINOUT WILL BE MADE)
+    //Tell if a contact sensor is touched
 bool isContactTouched (void)
 {
-    //return ((PINH3 == 0) || (PINH4 == 0) || (PINH5 == 0) || (PINH6 == 0) || (PING0 == 0) || (PING1 == 0));
-    return false;
+    return ((PIN_SENSOR_X1_MIN == 0) || (PIN_SENSOR_X1_MAX == 0) || (PIN_SENSOR_X2_MIN == 0) || (PIN_SENSOR_X2_MAX == 0) || (PIN_SENSOR_Y_MIN == 0) || (PIN_SENSOR_Y_MAX == 0));
 }
 
     //Tell which contact sensor is touched and its associated error code
 uint8_t whichContactTouched (void)
 {
-    if (PINH3 == 0)
+    if (PIN_SENSOR_X1_MIN == 0)
         return CMD_LOCK_MIN_X1;
-    else if (PINH4 == 0)
+    else if (PIN_SENSOR_X1_MAX == 0)
         return CMD_LOCK_MAX_X1;
-    else if (PING0 == 0)
+    else if (PIN_SENSOR_Y_MIN == 0)
         return CMD_LOCK_MIN_Y;
-    else if (PING1 == 0)
+    else if (PIN_SENSOR_Y_MAX == 0)
         return CMD_LOCK_MAX_Y;
-    else if (PINH5 == 0)
+    else if (PIN_SENSOR_X2_MIN == 0)
         return CMD_LOCK_MIN_X2;
-    else if (PINH6 == 0)
+    else if (PIN_SENSOR_X2_MAX == 0)
         return CMD_LOCK_MAX_X2;
     else
         return CMD_OK;
@@ -173,9 +180,12 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                     return whichContactTouched();
             }
 
-            //Disable motors
-            PORTA |= 0x10;
-            PORTL |= 0x10;
+            //Disable motors after movement if wanted
+            if (!onOffMotX)
+            {
+                PORTA |= 0x10;
+                PORTL |= 0x10;
+            }
 
             return CMD_OK;
     }
@@ -224,8 +234,9 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                     return whichContactTouched();
             }
 
-            //Disable motor
-            PORTB |= 0x10;
+            //Disable motor after movement if wanted
+            if (!onOffMotY)
+                PORTB |= 0x10;
 
             return CMD_OK;
     }
@@ -277,8 +288,9 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                     return whichContactTouched();
             }
 
-            //Disable motor
-            PORTC |= 0x10;
+            //Disable motor after movement if wanted
+            if (!onOffMotZ)
+                PORTC |= 0x10;
 
             return CMD_OK;
     }
@@ -326,8 +338,9 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                     return whichContactTouched();
             }
 
-            //Disable motor (TO VERIFY)
-            PORTF |= 0x10;
+            //Disable motor after movement if wanted
+            if (!onOffMotRotZ)
+                PORTF |= 0x10;
 
             return CMD_OK;
     }
@@ -626,11 +639,11 @@ bool isPotsUnderLimit(void)
     uint16_t adcValue1, adcValue2, adcValue3;
 
     //Reading ADC
-    ad_init(8);
+    ad_init(0x08);
     adcValue1 = ad_sample();
-    ad_init(9);
+    ad_init(0x09);
     adcValue2 = ad_sample();
-    ad_init(10);
+    ad_init(0x0A);
     adcValue3 = ad_sample();
 
     return ((adcValue1 < potLimit) && (adcValue2 < potLimit) && (adcValue3 < potLimit));
@@ -684,7 +697,7 @@ uint16_t getADCvalue(uint8_t selectedPin)
     // PK0 wanted
     case 0 :
     {
-        ad_init(8);
+        ad_init(0x08);
         return ad_sample();
     }
         break;
@@ -692,7 +705,7 @@ uint16_t getADCvalue(uint8_t selectedPin)
         // PK1 wanted
     case 1 :
     {
-        ad_init(9);
+        ad_init(0x09);
         return ad_sample();
     }
         break;
@@ -700,7 +713,7 @@ uint16_t getADCvalue(uint8_t selectedPin)
         // PK2 wanted
     case 2 :
     {
-        ad_init(10);
+        ad_init(0x0A);
         return ad_sample();
     }
         break;
@@ -766,4 +779,61 @@ uint8_t getSpeed (uint8_t selectedMotor)
     default :
         return 0;
     }
+}
+
+    //Enable or disable the selected motor (motors not locked by default)
+uint8_t setMotLocked(uint8_t selectedMotor, bool lockedOnOff)
+{
+    switch(selectedMotor)
+    {
+    //X
+    case 0 :
+        if (!lockedOnOff)
+        {
+            PORTA |= 0x10;
+            PORTL |= 0x10;
+        }
+        else
+        {
+            PORTA &= ~0x10; //Reversed logic on Enable pin
+            PORTL &= ~0x10;
+        }
+        break;
+
+        //Y
+    case 1 :
+        if (!lockedOnOff)
+            PORTB |= 0x10;
+    else
+            PORTB &= ~0x10;
+        break;
+
+        //Z
+    case 2 :
+        if (!lockedOnOff)
+            PORTC |= 0x10;
+        else
+            PORTC &= ~0x10;
+        break;
+
+        //RotZ
+    case 3 :
+        if (!lockedOnOff)
+            PORTF |= 0x10;
+        else
+            PORTF &= ~0x10;
+        break;
+
+        //Error : motor not known
+    default :
+        return MOT_NOT_KNOWN;
+    }
+
+    return CMD_OK;
+}
+
+    //Tell the state (enable or disable) of every motors and build the associated frame
+uint8_t getMotLocked(void)
+{
+    return ((onOffMotX | (onOffMotY << 1 ) | (onOffMotZ << 2) | (onOffMotRotZ << 3)) << 4);
 }

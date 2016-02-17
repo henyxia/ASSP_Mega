@@ -125,6 +125,23 @@ int main(void)
         }
             break;
 
+            //setMotLocked called
+        case 0x06 :
+        {
+            //OK, roger that, deducting orders and perform setMotLocked
+            returnCode = setMotLocked((serFrame1 & 0x03),(serFrame1 & 0x04));
+            send_serial(returnCode);
+        }
+            break;
+
+            //getMotLocked called
+        case 0x07 :
+        {
+            returnCode = getMotLocked();
+            send_serial(returnCode << 4);
+        }
+            break;
+
         //getDest called
         case 0x08 :
         {
@@ -208,9 +225,7 @@ int main(void)
             }
 
             else
-            {
                 send_serial(MOT_NOT_KNOWN);
-            }
         }
             break;
 

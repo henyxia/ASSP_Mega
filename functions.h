@@ -33,6 +33,13 @@
 #define MAX_DEST_Y 18021
 #define MAX_DEST_Z 6400
 
+#define PIN_SENSOR_X1_MIN (PINH & 0x08)
+#define PIN_SENSOR_X1_MAX (PINH & 0x10)
+#define PIN_SENSOR_X2_MIN (PINH & 0x20)
+#define PIN_SENSOR_X2_MAX (PINH & 0x40)
+#define PIN_SENSOR_Y_MIN (PING & 0x01)
+#define PIN_SENSOR_Y_MAX (PING & 0x02)
+
 // Functions
 void init_port(void);
 uint8_t setDest (uint8_t selectedMotor, uint16_t destination);
@@ -43,6 +50,7 @@ bool isContactTouched (void);
 uint8_t whichContactTouched(void);
 uint8_t setADC(uint16_t adcLevel);
 bool isPotsUnderLimit(void);
+uint8_t setMotLocked(uint8_t selectedMotor, bool lockedOnOff);
 
 uint16_t getDest (uint8_t selectedMotor);
 uint16_t getMS (void);
@@ -51,5 +59,6 @@ uint16_t getADC(void);
 uint8_t getRelease(void);
 uint16_t getADCvalue(uint8_t selectedPin);
 uint8_t getSpeed (uint8_t selectedMotor);
+uint8_t getMotLocked(void);
 
 #endif
