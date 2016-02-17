@@ -28,6 +28,9 @@
 #define MOT_NOT_KNOWN_GET 0xFFFF
 
 #define WAIT_FOR_NEXT_FRAME 0x0A
+#define WAIT_FOR_IT_1 0x0B
+#define WAIT_FOR_IT_2 0x0C
+
 
 #define MAX_DEST_X 23505
 #define MAX_DEST_Y 18021

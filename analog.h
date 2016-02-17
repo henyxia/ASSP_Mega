@@ -4,6 +4,7 @@
 
 // Functions
 void ad_init(unsigned char channel);
-unsigned int ad_sample(void);
+uint8_t ad_sample(void);
+uint16_t analogRead(uint8_t pin);
 
 #endif

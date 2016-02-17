@@ -150,9 +150,11 @@ int main(void)
             if (destination != MOT_NOT_KNOWN_GET)
             {
                 //First frame : OK
-                send_serial(CMD_OK);
+                send_serial(WAIT_FOR_IT_2);
+                get_serial();
                 //Frame 2 : dest[15:8]
                 send_serial(destination >> 8);
+                get_serial();
                 //Frame 3 : dest[7:0]
                 send_serial(destination & 0x00FF);
             }
@@ -170,7 +172,8 @@ int main(void)
         {
             destination = getMS();
 
-            send_serial((destination & 0x0F00) >> 4);
+            send_serial(((destination & 0x0F00) >> 4) |WAIT_FOR_IT_1);
+            get_serial();
             send_serial(destination & 0x00FF);
         }
             break;
@@ -187,7 +190,8 @@ int main(void)
         {
             destination = getADC();
 
-            send_serial((destination & 0x0300) >> 4 );
+            send_serial(((destination & 0x0300) >> 4) | WAIT_FOR_IT_1);
+            get_serial();
             send_serial(destination & 0x00FF);
         }
             break;
@@ -204,7 +208,8 @@ int main(void)
         {
             destination = getADCvalue(serFrame1);
 
-            send_serial((destination & 0x0300) >> 4 );
+            send_serial(((destination & 0x0300) >> 4) | WAIT_FOR_IT_1);
+            get_serial();
             send_serial(destination & 0x00FF);
         }
             break;
@@ -218,7 +223,8 @@ int main(void)
             if (returnCode != 0)
             {
                 //First frame : OK
-                send_serial(CMD_OK);
+                send_serial(WAIT_FOR_IT_1);
+                get_serial();
                 //Frame 2 : delayStep wanted
                 send_serial(returnCode);
             }
@@ -228,11 +234,13 @@ int main(void)
         }
             break;
 
-		case 0x0F:
-			// Asking for the version code
-			send_serial((MINOR_VERSION << 4) | CMD_OK);
-			send_serial(MAJOR_VERSION);
-			break;
+        //getVersion called
+        case 0x0F:
+            // Asking for the version code
+            send_serial((MINOR_VERSION << 4) | WAIT_FOR_IT_1);
+            get_serial();
+            send_serial(MAJOR_VERSION);
+            break;
 
             //Called command not known
         default :

@@ -21,9 +21,9 @@
  * Position Sensor Y Min : Port G (PG0) (Pin 41)
  * Position Sensor Y Max : Port G (PG1) (Pin 40)
 
- * Linear potentiometer 1 (Analog In) : Port K (PK0) (Analog pin 8)
- * Linear potentiometer 2 (Analog In) : Port K (PK1) (Analog pin 9)
- * Linear potentiometer 3 (Analog In) : Port K (PK2) (Analog pin 10)
+ * Linear potentiometer 1 (Analog In) : Port F (PF6) (Analog pin 6)
+ * Linear potentiometer 2 (Analog In) : Port F (PF7) (Analog pin 7)
+ * Linear potentiometer 3 (Analog In) : Port K (PK0) (Analog pin 8)
 
 */
 
@@ -50,7 +50,7 @@ uint16_t maxDestX = 23505;
 uint16_t maxDestY = 18021;
 uint16_t maxDestZ = 6400;
 
-uint16_t potLimit = 0;
+uint16_t potLimit = 512; //Mid position by default
 
 uint16_t i =0, stepToDo = 0;
 
@@ -76,7 +76,8 @@ void init_port(void)
     DDRH &= ~0b01111000;
 
       //Pots as inputs
-    DDRK &= ~0b00000111;
+    DDRK &= ~0b00000001;
+    DDRF &= ~0b11000000;
 
     // Init values (Drivers disabled by default at init, and reversed logic on Enable pin)
       //Pin enable HIGH
@@ -97,9 +98,6 @@ void init_port(void)
     //Activate Pull up internal res on Arduino for contact sensors
     PORTH |= 0b01111000;
     PORTG |= 0b00000011;
-
-    //Activate Pull up internal res on Arduino for linear pots
-    PORTK |= 0b00000111;
 }
 
     //Tell if a contact sensor is touched
@@ -140,7 +138,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                 return CMD_DEST_UNREACHABLE;
 
             //Set Dir
-            if (destination >= oldDestX) // Go ascending X, DirX = 1 (TO VERIFY !!)
+            if (destination >= oldDestX) // Go ascending X, DirX = 1 (OK !)
             {
                 PORTA |= 0x20;
                 PORTL |= 0x20;
@@ -199,7 +197,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                 return CMD_DEST_UNREACHABLE;
 
             //Set Dir
-            if (destination >= oldDestY) // Go ascending Y, DirY = 1 (TO VERIFY !!)
+            if (destination >= oldDestY) // Go ascending Y, DirY = 1 (OK !)
             {
                 PORTB |= 0x20;
 
@@ -636,17 +634,13 @@ uint8_t setADC(uint16_t adcLevel)
     //Tell if the value read on linear pots is under the limit
 bool isPotsUnderLimit(void)
 {
-    uint16_t adcValue1, adcValue2, adcValue3;
+    uint16_t adcValue1, adcValue2;
 
     //Reading ADC
-    ad_init(0x08);
-    adcValue1 = ad_sample();
-    ad_init(0x09);
-    adcValue2 = ad_sample();
-    ad_init(0x0A);
-    adcValue3 = ad_sample();
+    adcValue1 = analogRead(6);
+    adcValue2 = analogRead(7);
 
-    return ((adcValue1 < potLimit) && (adcValue2 < potLimit) && (adcValue3 < potLimit));
+    return ((adcValue1 < potLimit) && (adcValue2 < potLimit));
 }
 
     //Give the current position of the selected motor
@@ -697,24 +691,21 @@ uint16_t getADCvalue(uint8_t selectedPin)
     // PK0 wanted
     case 0 :
     {
-        ad_init(0x08);
-        return ad_sample();
+        return (analogRead(6) & 0x03FF);
     }
         break;
 
         // PK1 wanted
     case 1 :
     {
-        ad_init(0x09);
-        return ad_sample();
+        return (analogRead(7) & 0x03FF);
     }
         break;
 
         // PK2 wanted
     case 2 :
     {
-        ad_init(0x0A);
-        return ad_sample();
+        return (analogRead(8) & 0x03FF);
     }
         break;
 
