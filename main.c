@@ -137,8 +137,7 @@ int main(void)
             //getMotLocked called
         case 0x07 :
         {
-            returnCode = getMotLocked();
-            send_serial(returnCode << 4);
+            send_serial(getMotLocked() << 4);
         }
             break;
 

@@ -835,5 +835,5 @@ uint8_t setMotLocked(uint8_t selectedMotor, bool lockedOnOff)
     //Tell the state (enable or disable) of every motors and build the associated frame
 uint8_t getMotLocked(void)
 {
-    return ((onOffMotX | (onOffMotY << 1 ) | (onOffMotZ << 2) | (onOffMotRotZ << 3)) << 4);
+    return ((onOffMotX | (onOffMotY << 1 ) | (onOffMotZ << 2) | (onOffMotRotZ << 3)));
 }
