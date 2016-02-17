@@ -26,6 +26,12 @@ int main(void)
     init_port();
     init_serial(9600);
 
+    //Initialize position (X=0, Y=0)
+    init_position();
+
+    //Initialize position for needle (Z axis)
+    init_position_Z();
+
     //Reading serial and reacting
     while (1)
     {

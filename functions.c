@@ -50,7 +50,7 @@ uint16_t maxDestX = 23505;
 uint16_t maxDestY = 18021;
 uint16_t maxDestZ = 6400;
 
-uint16_t potLimit = 512; //Mid position by default
+uint16_t potLimit = 80; //Nearly 3mm by default
 
 uint16_t i =0, stepToDo = 0;
 
@@ -248,16 +248,16 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                 return CMD_DEST_UNREACHABLE;
 
             //Set Dir
-            if (destination >= oldDestZ) // Go ascending Z, DirZ = 0 (OK)
+            if (destination >= oldDestZ) // Go ascending Z, DirZ = 1 (OK)
             {
-                PORTC |= 0x20;
+                PORTC &= ~0x20;
 
                 stepToDo = destination - oldDestZ;
             }
 
             else
             {
-                PORTC &= ~0x20;
+                PORTC |= 0x20;
 
                 stepToDo = oldDestZ - destination;
             }
@@ -271,7 +271,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             // Perform steps
             for (i = 0; i < stepToDo; i++)
             {
-                if ((!isContactTouched()) && (isPotsUnderLimit()))
+                if (isPotsUnderLimit())
                 {
                     PORTC |= 0x01; //High
                     delay_ms(delayStepZ);
@@ -279,11 +279,8 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                     delay_ms(delayStepZ);
                 }
 
-                else if (!isPotsUnderLimit())
-                    return CMD_LOCK_Z;
-
                 else
-                    return whichContactTouched();
+                    return CMD_LOCK_Z;
             }
 
             //Disable motor after movement if wanted
@@ -321,7 +318,7 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
             // Perform steps
             for (i = 0; i < stepToDo; i++)
             {
-                if ((!isContactTouched()) && (isPotsUnderLimit()))
+                if (isPotsUnderLimit())
                 {
                     PORTF |= 0x01; //High
                     delay_ms(delayStepRotZ);
@@ -329,11 +326,8 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                     delay_ms(delayStepRotZ);
                 }
 
-                else if (!isPotsUnderLimit())
-                    return CMD_LOCK_Z;
-
                 else
-                    return whichContactTouched();
+                    return CMD_LOCK_Z;
             }
 
             //Disable motor after movement if wanted
@@ -827,4 +821,102 @@ uint8_t setMotLocked(uint8_t selectedMotor, bool lockedOnOff)
 uint8_t getMotLocked(void)
 {
     return ((onOffMotX | (onOffMotY << 1 ) | (onOffMotZ << 2) | (onOffMotRotZ << 3)));
+}
+
+    //Initialize carriage on position X=0,Y=0
+void init_position(void)
+{
+    //Go 8th step on X and Y
+    setMS(0,3);
+    setMS(1,3);
+
+    //Init Y = 0
+     //Go descending Y
+     PORTB &= ~0x20;
+
+     //Enable motor Y
+     PORTB &= ~0x10; //Reversed logic on Enable pin
+
+     while(PIN_SENSOR_Y_MIN != 0)
+     {
+         PORTB |= 0x01; //High
+         delay_ms(delayStepY);
+         PORTB &= ~0x01; //Low
+         delay_ms(delayStepY);
+     }
+
+     //Disable motor after movement if wanted
+     if (!onOffMotY)
+         PORTB |= 0x10;
+
+     //Reset full step on Y
+     setMS(1,0);
+
+     //Ready to go ascending Y next time
+     PORTB |= 0x20;
+
+     //Init X = 0
+      //Go descending X
+     PORTA &= ~0x20;
+     PORTL &= ~0x20;
+
+     //Enable motors
+     PORTA &= ~0x10; //Reversed logic on Enable pin
+     PORTL &= ~0x10;
+
+     while((PIN_SENSOR_X1_MIN != 0) && (PIN_SENSOR_X2_MIN != 0))
+     {
+         PORTA |= 0x01; //High
+         PORTL |= 0x01;
+         delay_ms(delayStepX);
+         PORTA &= ~0x01; //Low
+         PORTL &= ~0x01;
+         delay_ms(delayStepX);
+     }
+
+     //Disable motors after movement if wanted
+     if (!onOffMotX)
+     {
+         PORTA |= 0x10;
+         PORTL |= 0x10;
+     }
+
+     //Reset full step on X
+     setMS(0,0);
+
+     //Ready to go ascending X next time
+     PORTA |= 0x20;
+     PORTL |= 0x20;
+}
+
+    //Initialize position for needle (Z axis) ( /!\ EXPERIMENTAL !! TO CALIBRATE ON MACHINE)
+void init_position_Z(void)
+{
+    uint16_t stepDone = 0;
+
+    //Go 16th step (ultra smooth)
+    setMS(3,4);
+
+    //Go descending Z till needle touches the tray
+    PORTC |= 0x20;
+
+    //Enable Z
+    PORTC &= ~0x10; //Reversed logic on Enable pin
+
+    // Perform steps
+    while(isPotsUnderLimit() && (stepDone < MAX_DEST_Z/2)) //If the tray is never touched, motor wil stop
+    {
+        PORTC |= 0x01; //High
+        delay_ms(delayStepZ);
+        PORTC &= ~0x01; //Low
+        delay_ms(delayStepZ);
+        stepDone++;
+    }
+
+    //Disable motor after movement if wanted
+    if (!onOffMotZ)
+        PORTC |= 0x10;
+
+    //Ready to go ascending Z next time
+    PORTC &= ~0x20;
 }

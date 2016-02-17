@@ -22,7 +22,8 @@ uint16_t analogRead(uint8_t pin)
 {
         uint8_t low, high;
 
-        if (pin >= 14) pin -= 14; // allow for channel or pin numbers
+        if (pin >= 14)
+            pin -= 14; // allow for channel (ex: A12) or pin numbers (ex : 12)
 
         //Enable the ADC
         ADCSRA|=(1<<ADEN);

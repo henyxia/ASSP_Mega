@@ -45,6 +45,9 @@
 
 // Functions
 void init_port(void);
+void init_position(void);
+void init_position_Z(void);
+
 uint8_t setDest (uint8_t selectedMotor, uint16_t destination);
 uint8_t setMS (uint8_t selectedMotor, uint8_t microStep);
 uint8_t setPump (bool onOff);
