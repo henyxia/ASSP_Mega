@@ -175,7 +175,13 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                 }
 
                 else
+                {
+                    //Disable motors if contacted
+                    PORTA |= 0x10;
+                    PORTL |= 0x10;
+
                     return whichContactTouched();
+                }
             }
 
             //Disable motors after movement if wanted
@@ -229,7 +235,12 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                 }
 
                 else
+                {
+                    //Disable motor
+                    PORTB |= 0x10;
+
                     return whichContactTouched();
+                }
             }
 
             //Disable motor after movement if wanted
@@ -280,7 +291,12 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                 }
 
                 else
+                {
+                    //Disable motor
+                    PORTC |= 0x10;
+
                     return CMD_LOCK_Z;
+                }
             }
 
             //Disable motor after movement if wanted
@@ -327,7 +343,12 @@ uint8_t setDest (uint8_t selectedMotor, uint16_t destination)
                 }
 
                 else
+                {
+                    //Disable motor
+                    PORTF |= 0x10;
+
                     return CMD_LOCK_Z;
+                }
             }
 
             //Disable motor after movement if wanted
