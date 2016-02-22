@@ -53,6 +53,8 @@ uint8_t setMS (uint8_t selectedMotor, uint8_t microStep);
 uint8_t setPump (bool onOff);
 uint8_t setSpeed (uint8_t selectedMotor, uint8_t delayStep);
 bool isContactTouched (void);
+bool isOKtomoveX(void);
+bool isOKtomoveY(void);
 uint8_t whichContactTouched(void);
 uint8_t setADC(uint16_t adcLevel);
 bool isPotsUnderLimit(void);
